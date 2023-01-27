@@ -41,9 +41,11 @@ class Net(torch.nn.Module):
     def __init__(self, dims):
         super().__init__()
         self.layers = []
-        for d in range(len(dims) - 1):
-            self.layers += [Layer_Conv2d(dims[d], dims[d + 1]).to(device)]
-        self.layers += [Layer(dims[-2], dims[-1]).to(device)]
+        self.layers += [Layer_Conv2d(1, 6, 5, 1, 2).to(device)]
+        self.layers += [Layer_Pool_Conv2d(6, 16, 5, 1, 0).to(device)]
+        self.layers += [Layer_Pool_Conv2d(16, 120, 5, 1, 0).to(device)]
+        self.layers += [Layer(120, 84).to(device)]
+        self.layers += [Layer(84, 10).to(device)]
 
     def predict(self, x):
         goodness_per_label = []
@@ -70,7 +72,7 @@ class Layer(nn.Linear):
         self.relu = torch.nn.ReLU()
         self.opt = Adam(self.parameters(), lr=0.03)
         self.threshold = 2.0
-        self.num_epochs = 1000
+        self.num_epochs = 60
 
     def forward(self, x):
         x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)
@@ -94,39 +96,35 @@ class Layer(nn.Linear):
             self.opt.step()
         return self.forward(x_pos).detach(), self.forward(x_neg).detach()
 
-class Layer_Conv2d(nn.linear):
+class Layer_Conv2d(Layer):
     def __init__(self, in_features, out_features, kernel_size, stride, padding,
                  bias=True, device=None, dtype=None):
         super().__init__(in_features, out_features, bias, device, dtype)
         self.conv = nn.Conv2d(
             in_channels=in_features, out_channels=in_features, kernel_size=kernel_size, stride=stride, padding=padding, bias=True
         )
-        self.relu = torch.nn.ReLU()
-        self.opt = Adam(self.parameters(), lr=0.03)
-        self.threshold = 2.0
-        self.num_epochs = 1000
 
     def forward(self, x):
         x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)
-        return self.relu(
-            torch.mm(x_direction, self.weight.T) +
-            self.bias.unsqueeze(0))
+        res = self.conv(x_direction)
+        return self.relu(res)
 
-    def train(self, x_pos, x_neg):
-        for i in tqdm(range(self.num_epochs)):
-            g_pos = self.forward(x_pos).pow(2).mean(1)
-            g_neg = self.forward(x_neg).pow(2).mean(1)
-            # The following loss pushes pos (neg) samples to
-            # values larger (smaller) than the self.threshold.
-            loss = torch.log(1 + torch.exp(torch.cat([
-                -g_pos + self.threshold,
-                g_neg - self.threshold]))).mean()
-            self.opt.zero_grad()
-            # this backward just compute the derivative and hence
-            # is not considered backpropagation.
-            loss.backward()
-            self.opt.step()
-        return self.forward(x_pos).detach(), self.forward(x_neg).detach()
+
+class Layer_Pool_Conv2d(Layer):
+    def __init__(self, in_features, out_features, kernel_size, stride, padding,
+                 bias=True, device=None, dtype=None):
+        super().__init__(in_features, out_features, bias, device, dtype)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.conv = nn.Conv2d(
+            in_channels=in_features, out_channels=in_features, kernel_size=kernel_size, stride=stride, padding=padding, bias=True
+        )
+
+    def forward(self, x):
+        x_direction = x / (x.norm(2, 1, keepdim=True) + 1e-4)
+        res = self.pool(x_direction)
+        res = self.conv(res)
+        return self.relu(res)
+
 
 if __name__ == "__main__":
     torch.manual_seed(1234)
