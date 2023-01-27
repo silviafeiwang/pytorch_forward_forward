@@ -55,7 +55,7 @@ class Net(torch.nn.Module):
         self.layers += [Layer_Pool_Conv2d(6, 16, 5, 1, 0).to(device)]
         self.layers += [Layer_Pool_Conv2d(16, 120, 5, 1, 0).to(device)]
         self.layers += [Layer(120, 84).to(device)]
-        self.layers += [Layer(84, 10).to(device)]
+        # self.layers += [Layer(84, 10).to(device)]
 
     def predict(self, x):
         goodness_per_label = []
@@ -64,7 +64,9 @@ class Net(torch.nn.Module):
             goodness = []
             for layer in self.layers:
                 h = layer(h)
-                goodness += [flatten(h.pow(2).mean(1))[:, 0]]
+                h2 = h.pow(2).mean(1)
+                h2 = flatten(h).view(x.shape[0], -1).mean(1)
+                goodness += [h2]
             goodness_per_label += [sum(goodness).unsqueeze(1)]
         goodness_per_label = torch.cat(goodness_per_label, 1)
         return goodness_per_label.argmax(1)
