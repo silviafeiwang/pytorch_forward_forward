@@ -58,7 +58,8 @@ class Net(torch.nn.Module):
                 goodness += [h.pow(2).mean(1)]
             goodness_per_label += [sum(goodness).unsqueeze(1)]
         goodness_per_label = torch.cat(goodness_per_label, 1)
-        return goodness_per_label.argmax(1)
+        predict = goodness_per_label.argmax(1)
+        return predict
 
     def train(self, x_pos, x_neg):
         h_pos, h_neg = x_pos, x_neg
@@ -114,6 +115,9 @@ if __name__ == "__main__":
     net = Net([784, 500, 500])
     x, y = next(iter(train_loader))
     x, y = x.to(device), y.to(device)
+    
+    print("train error before training:", 1.0 - net.predict(x).eq(y).float().mean().item())
+    
     x_pos = overlay_y_on_x(x, y)
     rnd = torch.randperm(x.size(0))
     x_neg = overlay_y_on_x(x, y[rnd])
