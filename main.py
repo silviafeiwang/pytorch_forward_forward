@@ -118,8 +118,8 @@ if __name__ == "__main__":
     rnd = torch.randperm(x.size(0))
     x_neg = overlay_y_on_x(x, y[rnd])
     
-    for data, name in zip([x, x_pos, x_neg], ['orig', 'pos', 'neg']):
-        visualize_sample(data, name)
+    # for data, name in zip([x, x_pos, x_neg], ['orig', 'pos', 'neg']):
+    #     visualize_sample(data, name)
     
     net.train(x_pos, x_neg)
 
