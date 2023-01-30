@@ -55,7 +55,7 @@ class Net(torch.nn.Module):
         self.layers += [Layer_Pool_Conv2d(6, 16, 5, 1, 0).to(device)]
         self.layers += [Layer_Pool_Conv2d(16, 120, 5, 1, 0).to(device)]
         self.layers += [Layer(120, 84).to(device)]
-        # self.layers += [Layer(84, 10).to(device)]
+        self.layers += [Layer(84, 10).to(device)]
 
     def predict(self, x):
         goodness_per_label = []
